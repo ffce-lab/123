@@ -1,0 +1,10 @@
+{
+  "base": "CNY",
+  "default": "CNY",
+  "rates": {
+    "USD": null,
+    "EUR": null
+  },
+  "date": "",
+  "updatedBy": ""
+}

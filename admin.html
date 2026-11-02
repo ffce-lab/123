@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>配件数据管理（管理员）</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .admin-bar{max-width:1500px;margin:14px auto 0;padding:0 18px}
+  .admin-bar .card{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px}
+  .filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .filter-bar input[type=text]{width:300px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px}
+  .filter-bar select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px}
+  .wrap{max-width:1500px;margin:14px auto;padding:0 18px}
+  table.grid.admin{min-width:1200px}
+  .chg-list{max-height:52vh;overflow:auto;margin-top:10px;border:1px solid var(--line);border-radius:6px}
+  .chg-list table{width:100%;border-collapse:collapse;font-size:12px}
+  .chg-list th{background:#f4f7fb;color:var(--primary);text-align:left;padding:6px 8px;position:sticky;top:0;white-space:nowrap}
+  .chg-list td{padding:5px 8px;border-top:1px solid var(--line);vertical-align:top}
+  .old{color:var(--danger);text-decoration:line-through}
+  .new{color:var(--ok);font-weight:600}
+  .draft-chip{cursor:pointer}
+  .models-pick{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px}
+  .models-pick label{display:flex;align-items:center;gap:4px;color:var(--text)!important;margin:0!important}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><div class="logo">YC</div><div>配件数据管理<small>ADMIN · PARTS DATA</small></div></div>
+    <div class="spacer"></div>
+    <a href="index.html" target="_blank" style="color:#dbe6f2;font-size:12.5px">打开经销商页面 ↗</a>
+    <button class="btn btn-ghost btn-sm" onclick="openSettings()">⚙ 发布设置</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="admin-bar">
+    <div class="card">
+      <span class="stat-chip" id="stVer"></span>
+      <span class="stat-chip draft-chip" id="stDraft" onclick="openChanges()" title="点击查看待发布修改"></span>
+      <span class="stat-chip" id="stParts"></span>
+      <span class="stat-chip warn" id="stNoPrice"></span>
+      <span class="stat-chip" id="stExpire"></span>
+      <span class="stat-chip draft-chip" id="stRate" onclick="openRates()" title="点击设置汇率"></span>
+      <div class="spacer"></div>
+      <button class="btn btn-add" onclick="openRates()">💱 汇率设置</button>
+      <button class="btn btn-add" onclick="pickImport()">↑ 导入配件表</button>
+      <button class="btn btn-ghost" onclick="downloadTemplate()">↓ 导入模板</button>
+      <button class="btn btn-ghost" onclick="openAdd()">＋ 新增配件</button>
+      <button class="btn btn-ghost" onclick="exportAll()">↓ 导出配件表</button>
+      <button class="btn btn-ghost" onclick="discardDraft()">撤销全部修改</button>
+      <button class="btn btn-primary" onclick="openPublish()">⬆ 发布到网站</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="filter-bar">
+        <input type="text" id="q" placeholder="搜索图号 / 名称 / 物料号（全部机型）">
+        <select id="fModel"><option value="">全部机型</option></select>
+        <label><input type="checkbox" id="fNoPrice"> 只看无价格</label>
+        <label><input type="checkbox" id="fChanged"> 只看本次修改</label>
+        <span class="spacer"></span>
+        <span id="resInfo" class="spec"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="grid admin">
+          <thead><tr>
+            <th>机型</th><th>配置号</th><th>序号</th><th>图号</th><th>名称（中 / 英）</th><th>规格 / 备注</th>
+            <th>单车用量</th><th>物料号</th><th>单价</th><th>有效期</th><th style="width:120px">操作</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pager"></div>
+    </section>
+  </div>
+</div>
+<div id="loading" class="loading">正在加载数据…</div>
+
+<input type="file" id="importFile" accept=".xlsx" style="display:none">
+
+<!-- 导入预览 -->
+<div class="mask" id="impMask">
+  <div class="modal wide">
+    <h3>导入预览（确认后才会写入）</h3>
+    <div id="impSummary"></div>
+    <div class="chg-list"><table><thead><tr><th>Excel 行</th><th>状态</th><th>机型</th><th>图号</th><th>名称</th><th>说明</th></tr></thead><tbody id="impRows"></tbody></table></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeMask('impMask')">取消</button>
+      <button class="btn btn-add" id="impOk" onclick="confirmImport()">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑 / 新增配件 -->
+<div class="mask" id="editMask">
+  <div class="modal" style="width:680px">
+    <h3 id="editTitle">编辑配件</h3>
+    <div class="form-grid">
+      <div><label>机型</label><select id="eModel"></select></div>
+      <div><label>所属配置号 / 分类</label><select id="eCfg"></select></div>
+      <div class="full" id="eModelsBox"><label>同时加入其他机型（选填，没有相同配置号时归入「新上线配件」分类）</label><div class="models-pick" id="eModels"></div></div>
+      <div><label>零件图号 <span class="req">*</span></label><input id="eNo"></div>
+      <div><label>单车用量</label><input id="eQty" type="number" min="0" step="1"></div>
+      <div><label>名称（中文）<span class="req">*</span></label><input id="eCn"></div>
+      <div><label>名称（英文）</label><input id="eEn"></div>
+      <div><label>规格</label><input id="eSpec"></div>
+      <div><label>备注</label><input id="eRm"></div>
+    </div>
+    <div class="section-title">价格（按图号统一，所有机型共用）</div>
+    <div class="form-grid">
+      <div><label>物料号</label><input id="eCode"></div>
+      <div><label>单价（留空 = 经销商端显示「待报价」）</label><input id="ePrice" type="number" min="0" step="0.01"></div>
+      <div><label>币种</label><select id="eCur"><option>CNY</option><option>USD</option><option>EUR</option></select></div>
+      <div><label>有效期至（选填，如 2026.12.31）</label><input id="eTo"></div>
+    </div>
+    <div class="hint" id="eHint" style="display:none"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeMask('editMask')">取消</button>
+      <button class="btn btn-add" onclick="saveEdit()">保存到草稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- 待发布修改 -->
+<div class="mask" id="chgMask">
+  <div class="modal wide">
+    <h3>待发布修改（与网站当前数据对比）</h3>
+    <div id="chgSummary"></div>
+    <div class="chg-list"><table><thead><tr><th>类型</th><th>机型</th><th>配置号</th><th>图号</th><th>内容</th></tr></thead><tbody id="chgRows"></tbody></table></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeMask('chgMask')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 发布 -->
+<div class="mask" id="pubMask">
+  <div class="modal" style="width:640px">
+    <h3>发布到网站</h3>
+    <div id="pubSummary"></div>
+    <div class="form-grid" style="margin-top:10px">
+      <div class="full"><label>修改说明（会记录在修改历史中）</label><input id="pubMsg" placeholder="如：新增 U17 斗齿 5 项，调整液压件价格"></div>
+    </div>
+    <div class="hint" id="pubHint">发布后约 1–2 分钟网站自动更新，经销商刷新页面即可看到。</div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeMask('pubMask')">取消</button>
+      <button class="btn btn-ghost" onclick="downloadPackage()" title="GitHub 连不上时使用：下载数据包后到 GitHub 网页手动上传">下载数据包（手动上传）</button>
+      <button class="btn btn-primary" id="pubBtn" onclick="publish()">发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 汇率设置 -->
+<div class="mask" id="rateMask">
+  <div class="modal" style="width:600px">
+    <h3>汇率设置</h3>
+    <div class="hint">系统价格以<b>人民币</b>为准。在这里填写参考汇率后，经销商可在网站右上角选择人民币 / 美元 / 欧元，价格按此汇率自动换算，并提示「非实时汇率」。</div>
+    <div class="form-grid" style="margin-top:12px">
+      <div><label>1 美元（USD）= ? 人民币</label><input id="rUSD" type="number" min="0" step="0.0001" placeholder="如 7.1234，留空 = 不提供美元"></div>
+      <div><label>1 欧元（EUR）= ? 人民币</label><input id="rEUR" type="number" min="0" step="0.0001" placeholder="如 7.8123，留空 = 不提供欧元"></div>
+      <div><label>经销商首次打开时默认显示的货币</label><select id="rDefault"><option value="CNY">人民币 CNY</option><option value="USD">美元 USD</option><option value="EUR">欧元 EUR</option></select></div>
+      <div><label>汇率日期</label><input id="rDate" type="date"></div>
+    </div>
+    <div class="hint" id="rPreview"></div>
+    <div class="hint warn">保存后进入草稿，点「⬆ 发布到网站」后生效。经销商自己选过货币后，以经销商的选择为准。</div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeMask('rateMask')">取消</button>
+      <button class="btn btn-add" onclick="saveRates(false)">保存到草稿</button>
+      <button class="btn btn-primary" onclick="saveRates(true)">保存并发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 发布设置 -->
+<div class="mask" id="setMask">
+  <div class="modal" style="width:620px">
+    <h3>发布设置（只保存在本台电脑的浏览器中）</h3>
+    <div class="form-grid">
+      <div><label>GitHub 用户名 / 组织名</label><input id="sOwner" placeholder="如 yuchai-parts"></div>
+      <div><label>仓库名</label><input id="sRepo" placeholder="如 parts-mall"></div>
+      <div><label>分支</label><input id="sBranch" placeholder="main"></div>
+      <div><label>发布人（记录在修改历史中）</label><input id="sName" placeholder="如 张三"></div>
+      <div class="full"><label>访问令牌 Token（Fine-grained token，仅授权本仓库 Contents 读写）</label><input id="sToken" type="password" autocomplete="off"></div>
+    </div>
+    <div class="hint warn">令牌相当于发布密码：只在管理员自己的电脑上填写，不要发给他人；公用电脑用完请点「清除令牌」。令牌泄露时到 GitHub 设置里删除即可失效。</div>
+    <div class="hint" id="sHint" style="display:none"></div>
+    <div class="modal-foot">
+      <button class="btn btn-del" onclick="clearToken()">清除令牌</button>
+      <button class="btn btn-ghost" onclick="testConn()">测试连接</button>
+      <button class="btn btn-ghost" onclick="closeMask('setMask')">关闭</button>
+      <button class="btn btn-add" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toastBox"></div>
+
+<script src="assets/common.js"></script>
+<script src="assets/admin.js"></script>
+</body>
+</html>

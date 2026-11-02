@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overseas Distributor Parts Ordering</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><div class="logo">YC</div><div><span data-i18n="brand"></span><small data-i18n="brandSub"></small></div></div>
+    <nav class="model-tabs" id="modelTabs"></nav>
+    <select class="lang-sel" id="langSel" data-i18n-title="langLabel"></select>
+    <select class="lang-sel" id="curSel" data-i18n-title="currency" style="display:none"></select>
+    <button class="cart-btn" id="cartBtn" onclick="openCart()">🛒 <span data-i18n="cart"></span> <span class="badge zero" id="cartBadge">0</span></button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="model-strip">
+    <div class="card">
+      <div class="model-title">
+        <h2 id="modelName">—</h2>
+        <div class="en" id="modelEn"></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="stat-chip" id="statParts"></div>
+      <div class="stat-chip" id="statUpdated"></div>
+      <div class="search-box"><input id="searchIn" data-i18n-ph="searchPh"></div>
+    </div>
+    <div class="rate-note" id="rateNote" style="display:none"></div>
+  </div>
+
+  <div class="layout">
+    <aside class="card side">
+      <h3 data-i18n="categories"></h3>
+      <div id="cfgList"></div>
+    </aside>
+    <section class="main card" id="partsCard">
+      <div class="cfg-head" id="cfgHead"></div>
+      <div class="tbl-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th style="width:44px" data-i18n="thNo"></th>
+              <th data-i18n="thPartNo"></th>
+              <th style="min-width:190px" data-i18n="thDesc"></th>
+              <th data-i18n="thSpec"></th>
+              <th style="width:80px" data-i18n="thQtyUnit"></th>
+              <th data-i18n="thModels"></th>
+              <th data-i18n="thPrice"></th>
+              <th style="width:80px" data-i18n="thQty"></th>
+              <th style="width:110px" data-i18n="thAction"></th>
+            </tr>
+          </thead>
+          <tbody id="partBody"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pager"></div>
+    </section>
+  </div>
+
+  <footer>
+    广西玉柴装备科技有限公司 GUANGXI YUCHAI EQUIPMENT TECHNOLOGY CO.,LTD.<br>
+    <span data-i18n="footer"></span>
+  </footer>
+</div>
+<div id="loading" class="loading" data-i18n="loading">Loading…</div>
+
+<!-- 购物车 -->
+<div class="drawer-mask" id="cartMask" onclick="closeCart()"></div>
+<aside class="drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <h3 data-i18n="cartTitle"></h3>
+    <button class="x" onclick="closeCart()" data-i18n-title="close">×</button>
+  </div>
+  <div class="drawer-body">
+    <div class="section-title" id="cartCount"></div>
+    <div id="cartList"></div>
+
+    <div class="section-title" data-i18n="orderInfo"></div>
+    <div class="form-grid">
+      <div class="full"><label><span data-i18n="fCust"></span> <span class="req">*</span></label><input id="bCust" data-k="cust" data-i18n-ph="fCustPh"></div>
+      <div><label><span data-i18n="fContact"></span> <span class="req">*</span></label><input id="bContact" data-k="contact"></div>
+      <div><label><span data-i18n="fTel"></span> <span class="req">*</span></label><input id="bTel" data-k="tel"></div>
+      <div><label data-i18n="fDeliv"></label><input id="bDeliv" data-k="deliv" type="date"></div>
+      <div><label data-i18n="fTrans"></label><select id="bTrans" data-k="trans"></select></div>
+      <div class="full"><label data-i18n="fPayer"></label><input id="bPayer" data-k="payer"></div>
+      <div class="full"><label data-i18n="fRemark"></label><textarea id="bRemark" data-k="remark"></textarea></div>
+    </div>
+    <div class="hint" data-i18n="staffNote"></div>
+  </div>
+  <div class="drawer-foot">
+    <div class="rate-note small" id="cartRateNote" style="display:none;width:100%;margin:0"></div>
+    <div class="total"><span data-i18n="total"></span> <span id="cartTotal">0.00</span></div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" onclick="clearCart()" data-i18n="clear"></button>
+    <button class="btn btn-ghost" onclick="closeCart()" data-i18n="continue"></button>
+    <button class="btn btn-primary" onclick="exportOrder()" data-i18n="generate"></button>
+  </div>
+</aside>
+
+<!-- 生成订单后的提示 -->
+<div class="mask" id="doneMask">
+  <div class="modal">
+    <h3 data-i18n="doneTitle"></h3>
+    <div class="hint ok" id="doneFile"></div>
+    <div class="hint" style="font-size:13px">
+      <b data-i18n="nextStep"></b><br><br>
+      <span data-i18n="findFile"></span>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeDone(false)" data-i18n="keepCart"></button>
+      <button class="btn btn-add" onclick="closeDone(true)" data-i18n="clearCart"></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toastBox"></div>
+
+<script src="assets/common.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/shop.js"></script>
+</body>
+</html>
